@@ -25,6 +25,30 @@ CREATE TABLE IF NOT EXISTS lot_events(
 CREATE TABLE IF NOT EXISTS approvals(
  lot_id TEXT NOT NULL, reviewer TEXT NOT NULL, decision TEXT NOT NULL,
  reason TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(lot_id,reviewer));
+CREATE TABLE IF NOT EXISTS suppliers(
+ supplier_id TEXT PRIMARY KEY, name TEXT NOT NULL, material_scope TEXT NOT NULL,
+ created_by TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS material_batches(
+ batch_id TEXT PRIMARY KEY, supplier_id TEXT NOT NULL REFERENCES suppliers(supplier_id),
+ supplier_lot TEXT NOT NULL, material_type TEXT NOT NULL,
+ quantity REAL NOT NULL, unit TEXT NOT NULL, received_at TEXT NOT NULL,
+ created_by TEXT NOT NULL, created_at TEXT NOT NULL,
+ UNIQUE(supplier_id,supplier_lot));
+CREATE TABLE IF NOT EXISTS inspections(
+ inspection_id TEXT PRIMARY KEY, batch_id TEXT NOT NULL REFERENCES material_batches(batch_id),
+ result TEXT NOT NULL, notes TEXT NOT NULL, inspector TEXT NOT NULL, inspected_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS lot_materials(
+ usage_id TEXT PRIMARY KEY, lot_id TEXT NOT NULL REFERENCES chip_lots(lot_id),
+ batch_id TEXT NOT NULL REFERENCES material_batches(batch_id),
+ quantity REAL NOT NULL, purpose TEXT NOT NULL,
+ substitute_for TEXT, approval_id TEXT,
+ recorded_by TEXT NOT NULL, recorded_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS substitution_approvals(
+ approval_id TEXT PRIMARY KEY, lot_id TEXT NOT NULL REFERENCES chip_lots(lot_id),
+ batch_id TEXT NOT NULL REFERENCES material_batches(batch_id),
+ substitute_for TEXT NOT NULL, reason TEXT NOT NULL,
+ requested_by TEXT NOT NULL, requested_at TEXT NOT NULL,
+ reviewer TEXT, decision TEXT NOT NULL, review_reason TEXT, decided_at TEXT);
 """
 
 
@@ -33,7 +57,7 @@ def utcnow() -> str:
 
 
 def connect(path: str = ":memory:") -> sqlite3.Connection:
-    db = sqlite3.connect(path)
+    db = sqlite3.connect(path, check_same_thread=False)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys=ON")
     db.executescript(SCHEMA)

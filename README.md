@@ -66,6 +66,8 @@ PYTHONPATH=src python3 -m photon_fab.api --database photon.sqlite3 --port 8080
 
 HTTP 健康检查为 `GET /health`，登录、批次、测量和分析请求均支持 JSON；服务不访问外部网络，可在单个 Linux 应用容器中完成验收。
 
+供应商与材料追溯接口覆盖供应商建档（`POST /suppliers`）、材料批次登记（`POST /material-batches`，支持外延片 `epi_wafer` 与封装材料 `packaging`）、来料检验（`POST /material-batches/{id}/inspections`，仅质量角色）和批次用料关联（`POST /lots/{id}/materials`）。已用于生产的材料批次禁止改写或删除（`PUT`/`DELETE /material-batches/{id}` 会返回错误）；替代料须先经质量审批（`POST /lots/{id}/substitutions` 申请、`POST /substitutions/{id}/review` 审批）才能投料；`GET /lots/{id}/trace` 从成品批次反查完整多级追溯链，返回每条用料的供应商批号、来料检验结果和替代料审批记录。
+
 ## HTTP 服务
 
 ```bash

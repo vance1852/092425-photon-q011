@@ -23,13 +23,25 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             return self._json(200, {"status": "ok", "service": "photon-fab"})
-        if self.path.startswith("/lots/"):
-            try:
-                token = self.headers.get("Authorization", "").removeprefix("Bearer ")
+        token = self.headers.get("Authorization", "").removeprefix("Bearer ")
+        try:
+            if self.path.startswith("/lots/") and self.path.endswith("/trace"):
+                return self._json(200, self.service.trace_lot(token, self.path.split("/")[2]))
+            if self.path.startswith("/lots/"):
                 return self._json(200, self.service.get_lot(token, self.path.split("/", 2)[2]))
-            except Exception as exc:
-                return self._json(400, {"error": str(exc)})
-        return self._json(404, {"error": "not found"})
+            if self.path.startswith("/suppliers/"):
+                return self._json(200, self.service.get_supplier(token, self.path.split("/")[2]))
+            if self.path.startswith("/material-batches/"):
+                return self._json(200, self.service.get_material_batch(token, self.path.split("/")[2]))
+            if self.path.startswith("/substitutions/"):
+                return self._json(200, self.service.get_substitution(token, self.path.split("/")[2]))
+            return self._json(404, {"error": "not found"})
+        except PermissionError as exc:
+            return self._json(403, {"error": str(exc)})
+        except KeyError as exc:
+            return self._json(404, {"error": str(exc)})
+        except Exception as exc:
+            return self._json(400, {"error": str(exc)})
 
     def do_POST(self):
         try:
@@ -39,6 +51,18 @@ class Handler(BaseHTTPRequestHandler):
             token = self.headers.get("Authorization", "").removeprefix("Bearer ")
             if self.path == "/lots":
                 return self._json(201, self.service.create_lot(token, body["lot_id"], body["product"], body["process_rev"], body["wafer_count"]))
+            if self.path == "/suppliers":
+                return self._json(201, self.service.create_supplier(token, body["supplier_id"], body["name"], body["material_scope"]))
+            if self.path == "/material-batches":
+                return self._json(201, self.service.register_material_batch(token, body["batch_id"], body["supplier_id"], body["supplier_lot"], body["material_type"], body["quantity"], body["unit"]))
+            if self.path.startswith("/material-batches/") and self.path.endswith("/inspections"):
+                return self._json(201, self.service.record_inspection(token, self.path.split("/")[2], body["result"], body.get("notes", "")))
+            if self.path.startswith("/lots/") and self.path.endswith("/materials"):
+                return self._json(201, self.service.use_material(token, self.path.split("/")[2], body["batch_id"], body["quantity"], body["purpose"], body.get("substitute_for")))
+            if self.path.startswith("/lots/") and self.path.endswith("/substitutions"):
+                return self._json(201, self.service.request_substitution(token, self.path.split("/")[2], body["batch_id"], body["substitute_for"], body["reason"]))
+            if self.path.startswith("/substitutions/") and self.path.endswith("/review"):
+                return self._json(200, self.service.review_substitution(token, self.path.split("/")[2], body["decision"], body["reason"]))
             if self.path.startswith("/lots/") and self.path.endswith("/measurements"):
                 lot_id = self.path.split("/")[2]
                 return self._json(201, self.service.add_measurement(token, lot_id, body["wavelength_nm"], body["response"], body.get("noise", 0.0), body["instrument"]))
@@ -47,6 +71,35 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(404, {"error": "not found"})
         except PermissionError as exc:
             return self._json(403, {"error": str(exc)})
+        except KeyError as exc:
+            return self._json(404, {"error": str(exc)})
+        except Exception as exc:
+            return self._json(400, {"error": str(exc)})
+
+    def do_PUT(self):
+        try:
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+            token = self.headers.get("Authorization", "").removeprefix("Bearer ")
+            if self.path.startswith("/material-batches/"):
+                return self._json(200, self.service.update_material_batch(token, self.path.split("/")[2], body.get("supplier_lot"), body.get("material_type"), body.get("quantity"), body.get("unit")))
+            return self._json(404, {"error": "not found"})
+        except PermissionError as exc:
+            return self._json(403, {"error": str(exc)})
+        except KeyError as exc:
+            return self._json(404, {"error": str(exc)})
+        except Exception as exc:
+            return self._json(400, {"error": str(exc)})
+
+    def do_DELETE(self):
+        token = self.headers.get("Authorization", "").removeprefix("Bearer ")
+        try:
+            if self.path.startswith("/material-batches/"):
+                return self._json(200, self.service.delete_material_batch(token, self.path.split("/")[2]))
+            return self._json(404, {"error": "not found"})
+        except PermissionError as exc:
+            return self._json(403, {"error": str(exc)})
+        except KeyError as exc:
+            return self._json(404, {"error": str(exc)})
         except Exception as exc:
             return self._json(400, {"error": str(exc)})
 
