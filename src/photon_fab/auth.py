@@ -13,9 +13,9 @@ from datetime import datetime, timezone
 ROLES = {"operator", "engineer", "quality", "admin"}
 PERMISSIONS = {
     "operator": {"read", "measure"},
-    "engineer": {"read", "measure", "analyze", "submit"},
-    "quality": {"read", "measure", "analyze", "approve", "release"},
-    "admin": {"read", "measure", "analyze", "submit", "approve", "release", "admin"},
+    "engineer": {"read", "measure", "analyze", "submit", "source"},
+    "quality": {"read", "measure", "analyze", "approve", "release", "inspect"},
+    "admin": {"read", "measure", "analyze", "submit", "approve", "release", "admin", "source", "inspect"},
 }
 
 

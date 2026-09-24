@@ -8,9 +8,10 @@ from typing import Sequence
 from .analytics import confidence_interval, summarize_spectrum, yield_rate
 from .auth import Auth
 from .storage import connect, event, transaction, utcnow
+from .traceability import TraceabilityMixin
 
 
-class PhotonService:
+class PhotonService(TraceabilityMixin):
     def __init__(self, database: str = ":memory:"):
         self.db = connect(database)
         self.auth = Auth(self.db)

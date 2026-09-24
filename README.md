@@ -59,12 +59,21 @@ PYTHONPATH=src python3 -m plant_science.acceptance --workspace .
 
 `src/photon_fab/` 提供光电芯片批次、光谱测量、科学计算、质量审批和审计的离线后台。SQLite 保存完整批次生命周期，角色权限覆盖操作员、工程师、质量人员和管理员；峰值波长、噪声 RMS、响应度、置信区间及良率计算均为确定性本地算法。
 
+供应商物料追溯覆盖成品反查全链路：
+
+- 供应商建档（`/suppliers`），可停用但记录保留；
+- 物料批次登记（`/material-batches`），区分外延片、封装材料等类型并绑定供应商批号；
+- 来料检验结果（`pass`/`conditional`/`fail`）仅质量角色可录入，未检验或检验不合格的批次不得投产；
+- **已用于生产的物料批次禁止删除或改写**（DELETE/PATCH 与追加检验均返回 403），关联批次后状态锁定为 `in_use`；
+- 替代料必须经质量审批（`/substitutions` 申请、质量角色 `approved` 后方可关联用料），审批记录不可改判；
+- 多级追溯链：`GET /lots/{lot_id}/trace` 返回成品批次 → 用料关联 → 物料批次/全部来料检验 → 供应商，并附替代料审批、测量、放行审批与事件流；`GET /material-batches/{batch_id}/trace` 支持来料批次正向反查使用它的所有芯片批次。
+
 ```bash
 PYTHONPATH=src python3 -m photon_fab.acceptance
 PYTHONPATH=src python3 -m photon_fab.api --database photon.sqlite3 --port 8080
 ```
 
-HTTP 健康检查为 `GET /health`，登录、批次、测量和分析请求均支持 JSON；服务不访问外部网络，可在单个 Linux 应用容器中完成验收。
+HTTP 健康检查为 `GET /health`，登录、批次、测量、供应商、物料批次、检验、替代料审批和追溯请求均支持 JSON；服务不访问外部网络，可在单个 Linux 应用容器中完成验收。
 
 ## HTTP 服务
 
